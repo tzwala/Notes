@@ -143,7 +143,7 @@
     <!-- MAIN APP SCREEN -->
     <div class="app-container">
         <header class="app-header">
-            <h1>Glass Notes</h1>
+            <h1>Notes</h1>
         </header>
         <main class="content-area">
             <ul id="notes-list" class="notes-list"></ul>
@@ -242,8 +242,8 @@
             closeViewBtn.addEventListener('click', closeViewModal);
             
             editNoteBtn.addEventListener('click', () => {
-                const actualIndex = notes.length - 1 - currentViewIndex;
-                const noteToEdit = notes[actualIndex];
+                // --- FIX: Use currentViewIndex directly ---
+                const noteToEdit = notes[currentViewIndex];
                 
                 formTitle.innerText = "Edit Note";
                 noteTitleInput.value = noteToEdit.title;
@@ -253,34 +253,24 @@
                 setTimeout(() => { openBottomSheet(); noteTitleInput.focus(); }, 50);
             });
             
-            // --- NEW: Download Note Logic ---
             downloadNoteBtn.addEventListener('click', () => {
-                const actualIndex = notes.length - 1 - currentViewIndex;
-                const noteToDownload = notes[actualIndex];
+                // --- FIX: Use currentViewIndex directly ---
+                const noteToDownload = notes[currentViewIndex];
 
-                // Create a default filename from the title, replacing spaces with underscores
                 const defaultFileName = (noteToDownload.title || 'Untitled_Note').replace(/\s+/g, '_') + '.txt';
-                
-                // Prompt the user for a filename
                 const fileName = prompt("Enter a filename for your note:", defaultFileName);
                 
-                // If the user cancels the prompt, do nothing
                 if (!fileName) {
                     return;
                 }
 
-                // Format the content of the file
                 const fileContent = `Title: ${noteToDownload.title}\n\n--------------------\n\n${noteToDownload.description}`;
-                
-                // Create a Blob (a file-like object) with the content
                 const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
 
-                // Create a temporary link element to trigger the download
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 link.download = fileName;
 
-                // Programmatically click the link to start the download
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -298,8 +288,8 @@
                 }
               
                 if (currentViewIndex !== null) {
-                    const actualIndex = notes.length - 1 - currentViewIndex;
-                    notes[actualIndex] = { title, description };
+                    // --- FIX: Update the note at the correct index ---
+                    notes[currentViewIndex] = { title, description };
                 } else {
                     const newNote = { title, description };
                     notes.push(newNote);
@@ -314,31 +304,38 @@
             function addNoteTitleDOM(note, index) {
               const item = document.createElement('li');
               item.classList.add('note-item');
+              // --- FIX: Display notes in reverse order so the UI matches the array order ---
+              // The logic here is to iterate through the notes array backwards.
+              const reversedIndex = notes.length - 1 - index;
+              const noteToDisplay = notes[reversedIndex];
+
               item.innerHTML = `
-                <div class="note-title-link">${note.title || 'Untitled Note'}</div>
+                <div class="note-title-link">${noteToDisplay.title || 'Untitled Note'}</div>
                 <button class="delete-btn">${icons.trash}</button>
               `;
-              item.querySelector('.note-title-link').addEventListener('click', () => viewNote(index));
+              // Pass the correct reversedIndex to the event handlers
+              item.querySelector('.note-title-link').addEventListener('click', () => viewNote(reversedIndex));
               item.querySelector('.delete-btn').addEventListener('click', (e) => {
                   e.stopPropagation();
-                  removeNote(index);
+                  removeNote(reversedIndex);
               });
-              notesList.prepend(item);
+              notesList.appendChild(item); // Use appendChild to maintain order
             }
             
             function viewNote(index) {
                 currentViewIndex = index;
-                const actualIndex = notes.length - 1 - index;
-                const note = notes[actualIndex];
-                viewNoteTitle.innerText = note.title;
+                // --- FIX: Get the note from the correct index ---
+                const note = notes[index];
+                // --- FIX: Handle untitled notes consistently ---
+                viewNoteTitle.innerText = note.title || 'Untitled Note';
                 viewNoteDescription.innerText = note.description;
                 openViewModal();
             }
 
             function removeNote(index) {
                 if (confirm("Are you sure you want to delete this note?")) {
-                    const actualIndex = notes.length - 1 - index;
-                    notes.splice(actualIndex, 1);
+                    // --- FIX: Splice the note from the correct index ---
+                    notes.splice(index, 1);
                     updateLocalStorage();
                     displayNotes();
                 }
@@ -353,6 +350,7 @@
               if (notes.length === 0) {
                   notesList.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No notes yet. Tap '+' to add one!</p>`;
               } else {
+                  // The loop should be simple, the addNoteTitleDOM function will handle the display logic
                   notes.forEach((note, index) => addNoteTitleDOM(note, index));
               }
             }
